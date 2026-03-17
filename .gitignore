@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Python cache/virtualenv
+__pycache__/
+*.pyc
+venv/
+
+# Local model/output artifacts
+model_artifact.json
+
+# Raw dataset files (large/sensitive)
+*.xlsx

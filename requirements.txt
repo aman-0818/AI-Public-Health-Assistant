@@ -1,0 +1,3 @@
+# Runtime dependency list
+# This project currently uses only Python standard library modules.
+# Python 3.10+ is recommended.

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disease Risk Sentinel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="hero">
+    <div class="hero__badge">AI Public Health Assistant</div>
+    <h1>Disease Risk Sentinel</h1>
+    <p>
+      Enter your location and profile to estimate relative local risk for
+      dengue, malaria, and typhoid, then get Gemini-generated safety guidance.
+    </p>
+  </header>
+
+  <main class="layout">
+    <section class="panel panel--form reveal">
+      <h2>Check Your Area</h2>
+      <form id="risk-form" novalidate>
+        <div class="grid">
+          <label>
+            <span>Name</span>
+            <input id="name" name="name" type="text" placeholder="Your name" maxlength="80">
+          </label>
+          <label>
+            <span>Age</span>
+            <input id="age" name="age" type="number" min="0" max="120" required placeholder="e.g. 28">
+          </label>
+          <label>
+            <span>Gender</span>
+            <select id="gender" name="gender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="unknown" selected>Prefer not to say</option>
+            </select>
+          </label>
+          <label>
+            <span>Latitude</span>
+            <input id="latitude" name="latitude" type="number" step="any" required placeholder="e.g. 13.0827">
+          </label>
+          <label>
+            <span>Longitude</span>
+            <input id="longitude" name="longitude" type="number" step="any" required placeholder="e.g. 80.2707">
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="use-location" type="button" class="btn btn--ghost">Use My Current Location</button>
+          <button id="submit-btn" type="submit" class="btn btn--primary">Analyze Risk</button>
+        </div>
+      </form>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel panel--results reveal">
+      <h2>Risk Output</h2>
+      <div id="empty-state" class="empty">
+        Submit your details to view disease risk profile and prevention plan.
+      </div>
+
+      <div id="result-content" class="hidden">
+        <div id="risk-cards" class="risk-cards"></div>
+
+        <div class="meta-row">
+          <div class="chip">
+            <span class="chip__label">Local density</span>
+            <strong id="density-level">-</strong>
+          </div>
+          <div class="chip">
+            <span class="chip__label">Nearby cases (25km)</span>
+            <strong id="nearby-total">-</strong>
+          </div>
+        </div>
+
+        <details class="disclaimer">
+          <summary>Model disclaimer</summary>
+          <p id="disclaimer-text"></p>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel panel--advice reveal">
+      <h2>AI Guidance</h2>
+      <div id="advice-placeholder" class="empty">
+        Guidance appears after risk prediction is complete.
+      </div>
+      <article id="advice-content" class="advice hidden"></article>
+    </section>
+  </main>
+
+  <footer class="footnote">
+    This tool supports awareness and early action. It does not replace professional diagnosis.
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>
