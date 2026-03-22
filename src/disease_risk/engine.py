@@ -1,3 +1,29 @@
+"""
+src/disease_risk/engine.py
+--------------------------
+Core prediction engine for the Disease Risk Sentinel app.
+
+HOW IT WORKS (overview):
+  1. load_cases_from_directory() reads all .xlsx files from the dataset folder.
+     It parses each row, extracts lat/lon/age/gender/disease, and returns a list of cases.
+
+  2. DiseaseRiskModel.fit() takes those cases and:
+       - Builds a spatial grid index (cells of ~0.25 degrees) for fast neighbor lookup
+       - Computes class-balance weights so rare diseases (e.g. malaria) are not suppressed
+
+  3. DiseaseRiskModel.predict() takes a user's lat/lon/age/gender and:
+       - Finds nearby cases using the grid index
+       - Assigns a weight to each case: weight = 1 / distance²
+         (closer cases have more influence — this is the KNN / KDE idea)
+       - Sums weights per disease → normalizes to get % risk
+       - Returns balanced_risk, nearby_cases_25km, density_level
+
+  4. The model can be saved/loaded as a compact JSON file (model_artifact.json).
+
+NOTE: This uses ZERO external libraries — only Python standard library.
+      Pure Python so the server starts without any pip installs.
+"""
+
 import heapq
 import json
 import math
@@ -8,6 +34,7 @@ from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 from xml.etree import ElementTree as ET
 
+# Supported disease names — used throughout the codebase as ground truth labels
 DISEASES = ("dengue", "malaria", "typhoid")
 
 _NS = {
@@ -34,10 +61,12 @@ _NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 def _normalize_text(value: str) -> str:
+    """Lowercase + strip + collapse whitespace. Used for column name matching."""
     return " ".join((value or "").strip().lower().split())
 
 
 def _parse_float(value: str) -> Optional[float]:
+    """Extract the first number from a string like '32 Years' → 32.0. Returns None if not found."""
     if value is None:
         return None
     text = str(value).strip()
@@ -53,6 +82,7 @@ def _parse_float(value: str) -> Optional[float]:
 
 
 def _parse_age(value: str) -> Optional[float]:
+    """Parse age value and validate it's in the range 0-120. Returns None if invalid."""
     age = _parse_float(value)
     if age is None:
         return None
@@ -62,6 +92,7 @@ def _parse_age(value: str) -> Optional[float]:
 
 
 def _normalize_gender(value: str) -> str:
+    """Normalize gender string to 'male', 'female', 'other', or 'unknown'."""
     text = _normalize_text(value)
     if text in {"male", "m"}:
         return "male"
@@ -73,6 +104,11 @@ def _normalize_gender(value: str) -> str:
 
 
 def _infer_disease(row: Dict[str, str], source_name: str) -> Optional[str]:
+    """
+    Determine the disease label for a row by scanning the file name,
+    provisional_diagnosis, confirmed_diagnosis, and pathogen_name fields.
+    Returns 'dengue', 'malaria', 'typhoid', or None if unrecognized.
+    """
     blob = " ".join(
         [
             _normalize_text(source_name),
@@ -263,6 +299,10 @@ def load_cases_from_directory(data_dir: Path) -> Tuple[List[Dict[str, object]], 
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Calculate the great-circle distance in kilometres between two GPS coordinates.
+    Uses the Haversine formula — accurate for short to medium distances.
+    """
     rad = math.pi / 180.0
     p1 = lat1 * rad
     p2 = lat2 * rad
@@ -277,6 +317,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
+    """Convert raw weighted scores to probabilities that sum to 1.0 (uniform if all zero)."""
     total = sum(scores.values())
     if total <= 0:
         return {disease: round(1.0 / len(DISEASES), 6) for disease in DISEASES}
@@ -292,6 +333,19 @@ def _percentile(values: List[int], pct: float) -> int:
 
 
 class DiseaseRiskModel:
+    """
+    Weighted K-Nearest Neighbours model for area-level disease risk prediction.
+
+    Training  : Call fit() with a list of case dicts (lat, lon, age, gender, disease).
+    Prediction: Call predict() with a user's lat/lon/age/gender to get risk percentages.
+    Persistence: save() writes a compact JSON; load() restores from it.
+
+    Parameters:
+        cell_size_deg  : Size of spatial grid cells in degrees (~0.25° ≈ 25 km)
+        geo_scale_km   : Distance scale for geographic weight calculation
+        age_scale_years: Age difference scale for weight calculation
+        gender_penalty : Extra distance penalty when gender doesn't match
+    """
     def __init__(
         self,
         cell_size_deg: float = 0.25,

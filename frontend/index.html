@@ -11,6 +11,17 @@
 </head>
 <body>
   <div class="noise"></div>
+  <!-- Top disclaimer banner — shown prominently before the form -->
+  <div class="scope-banner">
+    <span class="scope-banner__icon">⚠️</span>
+    <span>
+      <strong>Demo Scope Notice:</strong> This prediction model is trained on disease surveillance data
+      from <strong>Tamil Nadu, India (2021)</strong> only. Results are meaningful only for locations
+      within Tamil Nadu. Predictions outside this region will not be accurate.
+      This tool is for <strong>educational &amp; demonstration purposes only</strong> — not a medical diagnosis.
+    </span>
+  </div>
+
   <header class="hero">
     <div class="hero__badge">AI Public Health Assistant</div>
     <h1>Disease Risk Sentinel</h1>
@@ -25,29 +36,31 @@
       <h2>Check Your Area</h2>
       <form id="risk-form" novalidate>
         <div class="grid">
+          <!-- All fields are required — form will not submit until all are filled -->
           <label>
-            <span>Name</span>
-            <input id="name" name="name" type="text" placeholder="Your name" maxlength="80">
+            <span>Name <span class="required-star">*</span></span>
+            <input id="name" name="name" type="text" placeholder="Your name" maxlength="80" required>
           </label>
           <label>
-            <span>Age</span>
+            <span>Age <span class="required-star">*</span></span>
             <input id="age" name="age" type="number" min="0" max="120" required placeholder="e.g. 28">
           </label>
           <label>
-            <span>Gender</span>
-            <select id="gender" name="gender">
+            <span>Gender <span class="required-star">*</span></span>
+            <select id="gender" name="gender" required>
+              <option value="" selected disabled>Select gender</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
-              <option value="unknown" selected>Prefer not to say</option>
+              <option value="unknown">Prefer not to say</option>
             </select>
           </label>
           <label>
-            <span>Latitude</span>
+            <span>Latitude <span class="required-star">*</span></span>
             <input id="latitude" name="latitude" type="number" step="any" required placeholder="e.g. 13.0827">
           </label>
           <label>
-            <span>Longitude</span>
+            <span>Longitude <span class="required-star">*</span></span>
             <input id="longitude" name="longitude" type="number" step="any" required placeholder="e.g. 80.2707">
           </label>
         </div>

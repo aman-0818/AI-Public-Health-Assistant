@@ -1,3 +1,25 @@
+"""
+api_server.py
+-------------
+HTTP server for the Disease Risk Sentinel app.
+
+ENDPOINTS:
+  GET  /           → Serves the frontend HTML page (frontend/index.html)
+  GET  /assets/*   → Serves static CSS/JS files
+  GET  /health     → Returns server status + total training cases loaded
+  POST /predict    → Accepts JSON {lat, lon, age, gender} → returns disease risk %
+  POST /advice     → Accepts same JSON → calls Gemini LLM → returns health guidance text
+
+HOW TO RUN:
+  1. First train the model:  python train_model.py
+  2. Start server:           python api_server.py --model model_artifact.json
+  3. Set Gemini key:         set GEMINI_API_KEY=your_key  (or add to .env file)
+
+GEMINI FALLBACK:
+  If Gemini API is unavailable or key is missing, the server automatically falls back
+  to a local rule-based advice generator (_rule_based_advice).
+"""
+
 import argparse
 import json
 import mimetypes
@@ -10,10 +32,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.disease_risk import DiseaseRiskModel
+from src.disease_risk.xgb_predictor import XGBRiskPredictor
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
+
+# Cache for Gemini available models list — fetched once per API key per session
 _AVAILABLE_MODELS_CACHE: Dict[str, List[str]] = {}
 
 
@@ -391,7 +415,7 @@ def _call_gemini_with_fallback(
 
 
 class PredictHandler(BaseHTTPRequestHandler):
-    model: DiseaseRiskModel = None  # type: ignore[assignment]
+    model: XGBRiskPredictor = None  # type: ignore[assignment]
     gemini_api_key: str = ""
     gemini_model_name: str = "gemini-2.5-flash"
 
@@ -462,11 +486,14 @@ class PredictHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
+            summary = self.model.training_summary
             self._send_json(
                 200,
                 {
                     "ok": True,
-                    "model_cases": self.model.training_summary.get("total_cases", 0),
+                    "model_type": summary.get("model_type", "XGBoost"),
+                    "model_accuracy": summary.get("model_accuracy", "N/A"),
+                    "total_cases": summary.get("total_cases", 0),
                 },
             )
             return
@@ -548,7 +575,6 @@ class PredictHandler(BaseHTTPRequestHandler):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Serve disease risk prediction API.")
-    parser.add_argument("--model", type=Path, default=Path("model_artifact.json"))
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument(
@@ -563,7 +589,12 @@ def main() -> None:
     for env_key, env_value in env_file_vars.items():
         os.environ.setdefault(env_key, env_value)
 
-    model = DiseaseRiskModel.load(args.model)
+    # Load the XGBoost model + raw case data for spatial context
+    print("Loading XGBoost model...")
+    model = XGBRiskPredictor.load(
+        model_dir   = BASE_DIR / "ml_output",
+        dataset_dir = BASE_DIR / "dataset",
+    )
     PredictHandler.model = model
     PredictHandler.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
     PredictHandler.gemini_model_name = args.gemini_model.strip() or "gemini-2.5-flash"

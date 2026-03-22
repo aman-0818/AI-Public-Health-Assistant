@@ -13,6 +13,54 @@
   --shadow: 0 18px 40px rgba(7, 26, 35, 0.22);
 }
 
+/* ── Scope disclaimer banner at the top of the page ── */
+.scope-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(240, 180, 41, 0.18);
+  border: 1px solid rgba(240, 180, 41, 0.55);
+  border-radius: 0;
+  padding: 12px 24px;
+  font-size: 0.88rem;
+  color: #fff;
+  line-height: 1.5;
+}
+.scope-banner__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.scope-banner strong {
+  color: #f0b429;
+}
+
+/* ── Required field star indicator ── */
+.required-star {
+  color: #ff7a18;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* ── Out-of-region warning shown inside Risk Output panel ── */
+.out-of-region-warning {
+  background: rgba(207, 63, 49, 0.12);
+  border: 1.5px solid rgba(207, 63, 49, 0.6);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.out-of-region-warning strong {
+  color: #cf3f31;
+  font-size: 0.95rem;
+}
+.out-of-region-warning p {
+  margin: 6px 0 0;
+}
+
 * {
   box-sizing: border-box;
 }
